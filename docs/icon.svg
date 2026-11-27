@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+  <defs>
+    <clipPath id="body"><rect x="66" y="96" width="108" height="144" rx="30"/></clipPath>
+  </defs>
+  <!-- nipple -->
+  <path d="M100 74 C100 50 108 22 120 22 C132 22 140 50 140 74 Z" fill="#f59e0b"/>
+  <!-- collar -->
+  <rect x="58" y="66" width="124" height="34" rx="12" fill="#0d9488"/>
+  <!-- bottle body -->
+  <rect x="66" y="96" width="108" height="144" rx="30" fill="#ccfbf1"/>
+  <!-- milk -->
+  <g clip-path="url(#body)">
+    <path d="M60 150 C88 140 112 160 140 150 C160 143 172 146 180 150 L180 244 L60 244 Z" fill="#fffbeb"/>
+  </g>
+  <rect x="66" y="96" width="108" height="144" rx="30" fill="none" stroke="#14b8a6" stroke-width="10"/>
+  <!-- measuring ticks -->
+  <g stroke="#14b8a6" stroke-width="8" stroke-linecap="round">
+    <line x1="88" y1="128" x2="106" y2="128"/>
+    <line x1="88" y1="172" x2="106" y2="172"/>
+    <line x1="88" y1="212" x2="106" y2="212"/>
+  </g>
+  <!-- freezer badge -->
+  <circle cx="190" cy="196" r="50" fill="#6366f1" stroke="#ffffff" stroke-width="8"/>
+  <g stroke="#ffffff" stroke-width="7" stroke-linecap="round" fill="none" transform="translate(190 196)">
+    <g id="arm">
+      <line x1="0" y1="-30" x2="0" y2="30"/>
+      <polyline points="-10,-22 0,-12 10,-22"/>
+      <polyline points="-10,22 0,12 10,22"/>
+    </g>
+    <use href="#arm" transform="rotate(60)"/>
+    <use href="#arm" transform="rotate(-60)"/>
+  </g>
+</svg>

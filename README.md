@@ -1,4 +1,6 @@
-# 🍼 Milk Tracker for Home Assistant
+<img src="custom_components/milk_tracker/brand/icon.png" alt="" width="96" align="right">
+
+# Milk Tracker for Home Assistant
 
 > **Beta.** This is an early release. Please [open an issue](https://github.com/highergroundstudio/HA-Milk-Tracker/issues) if something doesn't work. Keep a note of your stash amounts in case you need to correct them.
 
