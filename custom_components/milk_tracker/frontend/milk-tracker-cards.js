@@ -10,7 +10,7 @@
  * no external dependencies — plain web components.
  */
 
-const VERSION = "1.0.0";
+const VERSION = "1.0.0-beta.1";
 const DOMAIN = "milk_tracker";
 
 /* ------------------------------------------------------------------ */

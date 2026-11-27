@@ -1,5 +1,7 @@
 # 🍼 Milk Tracker for Home Assistant
 
+> **Beta.** This is an early release. Please [open an issue](https://github.com/highergroundstudio/HA-Milk-Tracker/issues) if something doesn't work. Keep a note of your stash amounts in case you need to correct them.
+
 Track your pumped breast milk stash — what's in the fridge and freezer, what's
 about to expire, how much you pump and feed each day, and whether you're on
 pace for a stash goal (a trip, going back to work…).
@@ -32,7 +34,7 @@ dashboard cards.
 
 ### HACS (recommended)
 1. HACS → ⋮ → *Custom repositories* → add `https://github.com/highergroundstudio/HA-Milk-Tracker`, category **Integration**.
-2. Install **Milk Tracker** and restart Home Assistant.
+2. Install **Milk Tracker** and restart Home Assistant. While it's in beta, you may need to turn on *Show beta versions* for this repository in HACS (⋮ → *Redownload*).
 3. *Settings → Devices & services → Add integration → Milk Tracker*.
 
 ### Manual
@@ -126,3 +128,7 @@ The cards are a single dependency-free JS file in `frontend/`.
 
 > Food-safety defaults follow CDC guidance for healthy, full-term babies.
 > Ask your pediatrician if your situation is different.
+
+## License
+
+[MIT](LICENSE)
