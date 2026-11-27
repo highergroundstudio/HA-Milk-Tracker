@@ -98,6 +98,8 @@ class MilkTrackerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 self.tracker.set_stash(LOC_FREEZER, freezer, now)
             # Starting stash shouldn't appear as a correction in the log.
             self.tracker.log.clear()
+            for batch in self.tracker.batches:
+                batch["note"] = "Starting stash"
             self.tracker.set_setting(
                 "daily_intake",
                 float(self.config_entry.data.get(CONF_DAILY_INTAKE, DEFAULT_DAILY_INTAKE_OZ)),

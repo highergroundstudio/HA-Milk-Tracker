@@ -10,7 +10,7 @@
  * no external dependencies — plain web components.
  */
 
-const VERSION = "1.0.0-beta.1";
+const VERSION = "1.0.0-beta.2";
 const DOMAIN = "milk_tracker";
 
 /* ------------------------------------------------------------------ */
@@ -120,7 +120,7 @@ const BASE_CSS = `
     --mt-surface-2: color-mix(in srgb, var(--primary-text-color) 9%, transparent);
     display: block;
   }
-  ha-card { padding: 16px; overflow: hidden; height: 100%; box-sizing: border-box; }
+  ha-card { padding: 16px; overflow: hidden; height: 100%; box-sizing: border-box; container-type: inline-size; }
   * { box-sizing: border-box; }
   button { font: inherit; color: inherit; }
   .row { display: flex; align-items: center; gap: 8px; }
@@ -452,10 +452,11 @@ class MilkTrackerCard extends MilkTrackerBase {
     .banner.error { background: color-mix(in srgb, var(--mt-error) 12%, transparent); }
     .banner.error ha-icon { color: var(--mt-error); }
     .banner b { font-weight: 600; }
-    .chips { display: grid; grid-template-columns: repeat(auto-fit, minmax(54px, 1fr)); gap: 8px; margin: 12px 0; }
+    .chips { display: grid; grid-template-columns: repeat(auto-fit, minmax(42px, 1fr)); gap: 6px; margin: 12px 0; }
     .chip { border: 1px solid var(--divider-color); background: transparent; border-radius: 12px; padding: 10px 4px;
       font-weight: 600; font-size: 0.95rem; cursor: pointer; transition: all .12s; min-height: 44px; }
     .chip:hover { background: var(--mt-surface); }
+    .chips.big .chip { min-height: 64px; font-size: 1.25rem; border-radius: 16px; }
     .chip.on { background: color-mix(in srgb, var(--accent) 16%, transparent); border-color: var(--accent); color: var(--accent); }
     .stepper { display: flex; align-items: center; gap: 8px; }
     .stepper .val { flex: 1; text-align: center; font-size: 1.5rem; font-weight: 700; display: flex; align-items: baseline; justify-content: center; gap: 4px; }
@@ -476,6 +477,12 @@ class MilkTrackerCard extends MilkTrackerBase {
     .stat .v { font-size: 1.15rem; font-weight: 700; margin-top: 2px; white-space: nowrap; }
     .stat .s { font-size: 0.75rem; color: var(--secondary-text-color); line-height: 1.3; }
     .note-toggle { margin-top: 8px; display: flex; gap: 8px; }
+    @container (max-width: 340px) {
+      .stats { grid-template-columns: 1fr 1fr; }
+      .stats .stat:last-child { grid-column: 1 / -1; }
+      .hero .amount { font-size: 2.2rem; }
+      .opts .seg { min-width: 0; }
+    }
     .note-toggle input { flex: 1; }
   `;
 
@@ -715,7 +722,7 @@ class MilkTrackerCard extends MilkTrackerBase {
           <button class="${!pump ? "on" : ""}" data-action="mode" data-value="feed" role="tab" aria-selected="${!pump}">
             <ha-icon icon="mdi:baby-bottle" style="color:var(--mt-feed)"></ha-icon>Fed</button>
         </div>
-        <div class="chips">${chips}</div>
+        <div class="chips ${cfg.one_tap ? "big" : ""}">${chips}</div>
         ${
           cfg.one_tap
             ? ""
@@ -831,7 +838,7 @@ class MilkTrackerGoalCard extends MilkTrackerBase {
   }
 
   getGridOptions() {
-    return { columns: 6, min_columns: 6, rows: "auto" };
+    return { columns: 12, min_columns: 6, rows: "auto" };
   }
 
   on_edit() {
@@ -976,6 +983,10 @@ class MilkTrackerHistoryCard extends MilkTrackerBase {
     .day-head { font-size: .78rem; font-weight: 600; color: var(--secondary-text-color); margin: 12px 0 2px;
       display: flex; justify-content: space-between; }
     .more { display: flex; justify-content: center; margin-top: 8px; }
+    @container (max-width: 320px) {
+      .header { flex-wrap: wrap; }
+      .header .seg { width: 100% !important; order: 3; }
+    }
   `;
 
   constructor() {
@@ -1038,7 +1049,7 @@ class MilkTrackerHistoryCard extends MilkTrackerBase {
     const padL = 30;
     const padB = 22;
     const padT = 8;
-    const max = Math.max(1, ...days.map((d) => Math.max(d.pumped, d.fed)));
+    const max = Math.max(this.unit === "ml" ? 120 : 4, ...days.map((d) => Math.max(d.pumped, d.fed)));
     const nice = (() => {
       const raw = max / 4;
       const mag = 10 ** Math.floor(Math.log10(raw));
@@ -1188,7 +1199,20 @@ class MilkTrackerInventoryCard extends MilkTrackerBase {
   static css = `
     .loc-head { display: flex; align-items: center; gap: 8px; margin: 4px 0 2px; }
     .loc-head .name { font-weight: 600; }
-    .loc-head .total { margin-left: auto; font-weight: 700; }
+    .loc-head .sub { white-space: nowrap; }
+    .loc-head .total { margin-left: auto; font-weight: 700; white-space: nowrap; }
+    .item .line2 .pill { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+    .item .amt { white-space: nowrap; }
+    @container (max-width: 360px) {
+      .loc-head .sub, .item .bar { display: none; }
+      .item .acts .icon-btn { width: 32px; height: 32px; }
+      .item .amt { min-width: 0; }
+    }
+    @container (max-width: 250px) {
+      .item { flex-wrap: wrap; row-gap: 2px; }
+      .item .body { flex-basis: 100%; }
+      .item .amt { text-align: left; flex: 1; }
+    }
     .bar { height: 4px; border-radius: 4px; background: var(--mt-surface-2); overflow: hidden; margin-top: 4px; }
     .bar span { display: block; height: 100%; background: var(--c); }
     .item .amt { font-weight: 700; font-size: .95rem; min-width: 52px; text-align: right; }
@@ -1211,7 +1235,7 @@ class MilkTrackerInventoryCard extends MilkTrackerBase {
   }
 
   getGridOptions() {
-    return { columns: 6, min_columns: 6, rows: "auto" };
+    return { columns: 12, min_columns: 6, rows: "auto" };
   }
 
   on_edit() {
