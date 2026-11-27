@@ -10,11 +10,11 @@ It's a proper integration: one setup wizard, no helpers, scripts, template
 sensors or midnight-reset automations, and it comes with four custom
 dashboard cards.
 
-[![Home Assistant](https://img.shields.io/badge/Home%20Assistant-2024.8+-41BDF5.svg)](https://www.home-assistant.io)
-[![HACS](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://hacs.xyz)
-[![Release](https://img.shields.io/github/v/release/highergroundstudio/HA-Milk-Tracker.svg)](https://github.com/highergroundstudio/HA-Milk-Tracker/releases)
-[![Validate](https://github.com/highergroundstudio/HA-Milk-Tracker/actions/workflows/validate.yaml/badge.svg)](https://github.com/highergroundstudio/HA-Milk-Tracker/actions/workflows/validate.yaml)
-[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![Home Assistant](https://img.shields.io/badge/Home%20Assistant-2025.2%2B-41BDF5?logo=homeassistant&logoColor=white)](https://www.home-assistant.io)
+[![HACS](https://img.shields.io/badge/HACS-Custom-41BDF5?logo=homeassistantcommunitystore&logoColor=white)](https://hacs.xyz/docs/faq/custom_repositories/)
+[![Release](https://img.shields.io/github/v/release/highergroundstudio/HA-Milk-Tracker?include_prereleases&sort=semver&label=release)](https://github.com/highergroundstudio/HA-Milk-Tracker/releases)
+[![Validate](https://github.com/highergroundstudio/HA-Milk-Tracker/actions/workflows/validate.yml/badge.svg)](https://github.com/highergroundstudio/HA-Milk-Tracker/actions/workflows/validate.yml)
+[![License: MIT](https://img.shields.io/github/license/highergroundstudio/HA-Milk-Tracker)](LICENSE)
 
 ![Dashboard](docs/dashboard-light.png)
 
