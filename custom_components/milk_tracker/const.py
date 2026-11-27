@@ -5,6 +5,8 @@ from __future__ import annotations
 from typing import Final
 
 DOMAIN: Final = "milk_tracker"
+# Keep in sync with manifest.json and VERSION in frontend/milk-tracker-cards.js.
+VERSION: Final = "1.0.0-beta.4"
 STORAGE_VERSION: Final = 1
 
 # Config entry data / options

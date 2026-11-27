@@ -10,7 +10,7 @@ from custom_components.milk_tracker.const import DOMAIN
 
 
 async def _setup(hass: HomeAssistant):
-    with patch("custom_components.milk_tracker.add_extra_js_url"):
+    with patch("custom_components.milk_tracker.cards.add_extra_js_url"):
         assert await async_setup_component(hass, "http", {})
         result = await hass.config_entries.flow.async_init(DOMAIN, context={"source": "user"})
         assert result["type"] is FlowResultType.FORM
@@ -121,3 +121,37 @@ async def test_full_flow(hass: HomeAssistant, hass_ws_client) -> None:
     assert msg["event"]["default_location"] == "freezer"
 
     assert await hass.config_entries.async_unload(entry.entry_id)
+
+
+async def test_cards_served_fresh(hass: HomeAssistant, hass_client_no_auth) -> None:
+    """Cards are re-validated by ETag so card-only updates need no restart."""
+    await _setup(hass)
+    client = await hass_client_no_auth()
+    resp = await client.get("/milk_tracker_static/milk-tracker-cards.js")
+    assert resp.status == 200
+    assert resp.headers["Cache-Control"] == "no-cache"
+    assert "customElements.define" in await resp.text()
+    etag = resp.headers["ETag"]
+    resp = await client.get(
+        "/milk_tracker_static/milk-tracker-cards.js", headers={"If-None-Match": etag}
+    )
+    assert resp.status == 304
+
+    # Simulate HACS replacing the file on disk (no restart).
+    from custom_components.milk_tracker import cards as frontend
+
+    original = frontend.CARDS_PATH.read_bytes()
+    try:
+        frontend.CARDS_PATH.write_bytes(original + b"\n// updated\n")
+        import os
+        import time
+
+        os.utime(frontend.CARDS_PATH, (time.time() + 5, time.time() + 5))
+        resp = await client.get(
+            "/milk_tracker_static/milk-tracker-cards.js", headers={"If-None-Match": etag}
+        )
+        assert resp.status == 200
+        assert resp.headers["ETag"] != etag
+        assert (await resp.text()).endswith("// updated\n")
+    finally:
+        frontend.CARDS_PATH.write_bytes(original)

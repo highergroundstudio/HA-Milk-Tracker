@@ -40,6 +40,7 @@ from .const import (
     LOC_FRIDGE,
     STORAGE_VERSION,
     UNIT_OZ,
+    VERSION,
 )
 from .tracker import MilkTracker
 
@@ -182,6 +183,7 @@ class MilkTrackerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     def frontend_payload(self, log_limit: int = 50) -> dict[str, Any]:
         return {
             "entry_id": self.config_entry.entry_id,
+            "version": VERSION,
             "name": self.baby_name,
             "title": self.config_entry.title,
             "unit": self.unit,

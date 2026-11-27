@@ -53,6 +53,11 @@ Copy `custom_components/milk_tracker` into your `config/custom_components/` fold
 
 The cards are bundled with the integration and **load automatically**, so you don't need to add a resource or install a separate frontend plugin.
 
+### Updating
+
+- **Card-only updates** (release notes say *No restart needed*): update in HACS, then refresh the page.
+- **Integration updates:** update in HACS and restart Home Assistant. Home Assistant only loads integration code at startup. Until you restart, the main card shows a "Restart Home Assistant to finish" notice.
+
 ## Migrating from the helper-based setup
 
 1. Note your current `input_number.milk_stash` value (plus anything else you want to carry over, e.g. goal amount/date).

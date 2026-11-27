@@ -2,16 +2,13 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-
-from homeassistant.components.frontend import add_extra_js_url
-from homeassistant.components.http import StaticPathConfig
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.typing import ConfigType
 
-from .const import DOMAIN, FRONTEND_FILE, FRONTEND_URL_BASE
+from .cards import async_register_frontend
+from .const import DOMAIN, VERSION  # noqa: F401
 from .coordinator import MilkTrackerConfigEntry, MilkTrackerCoordinator
 from .services import async_setup_services
 from .websocket import async_setup_websocket
@@ -27,20 +24,13 @@ PLATFORMS: list[Platform] = [
 
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
-VERSION = "1.0.0-beta.3"
-
-
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Set up services, websocket API and the bundled Lovelace cards."""
     async_setup_services(hass)
     async_setup_websocket(hass)
 
-    frontend_dir = Path(__file__).parent / "frontend"
-    await hass.http.async_register_static_paths(
-        [StaticPathConfig(FRONTEND_URL_BASE, str(frontend_dir), cache_headers=False)]
-    )
     # Cards load automatically on every dashboard — no manual resource needed.
-    add_extra_js_url(hass, f"{FRONTEND_URL_BASE}/{FRONTEND_FILE}?v={VERSION}")
+    async_register_frontend(hass)
     return True
 
 

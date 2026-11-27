@@ -10,7 +10,7 @@
  * no external dependencies — plain web components.
  */
 
-const VERSION = "1.0.0-beta.3";
+const VERSION = "1.0.0-beta.4";
 const DOMAIN = "milk_tracker";
 
 /* ------------------------------------------------------------------ */
@@ -474,6 +474,8 @@ class MilkTrackerCard extends MilkTrackerBase {
     .banner.error { background: color-mix(in srgb, var(--mt-error) 12%, transparent); }
     .banner.error ha-icon { color: var(--mt-error); }
     .banner b { font-weight: 600; }
+    .banner.info { background: color-mix(in srgb, var(--primary-color) 12%, transparent); cursor: default; }
+    .banner.info ha-icon { color: var(--primary-color); }
     .chips { display: grid; grid-template-columns: repeat(auto-fit, minmax(42px, 1fr)); gap: 6px; margin: 12px 0; }
     .chip { border: 1px solid var(--divider-color); background: transparent; border-radius: 12px; padding: 10px 4px;
       font-weight: 600; font-size: 0.95rem; cursor: pointer; transition: all .12s; min-height: 44px; }
@@ -680,6 +682,10 @@ class MilkTrackerCard extends MilkTrackerBase {
     this._source = "auto";
     this._render();
   }
+  on_restart() {
+    if (!this._confirmTap("restart")) return;
+    this._hass.callService("homeassistant", "restart");
+  }
   on_pump_now() {
     this._mode = "pump";
     this._render();
@@ -737,6 +743,14 @@ class MilkTrackerCard extends MilkTrackerBase {
       banners.push(`<button class="banner warn" data-action="feed_oldest">
         <ha-icon icon="mdi:timer-sand"></ha-icon>
         <span class="spacer"><b>${withUnit(s.expiring_amount, u)}</b> expires in ${duration(new Date(s.next_expiry) - Date.now())} — feeds use it first.</span></button>`);
+    }
+    if (d.version && d.version !== VERSION) {
+      const admin = this._hass?.user?.is_admin;
+      banners.push(`<div class="banner info">
+        <ha-icon icon="mdi:update"></ha-icon>
+        <span class="spacer"><b>Milk Tracker was updated.</b> Restart Home Assistant to finish
+          <span class="muted">(integration ${esc(d.version)} · cards ${VERSION})</span>.</span>
+        ${admin ? `<button class="ghost-btn" data-action="restart">${this._confirm === "restart" ? "Tap to confirm" : "Restart"}</button>` : ""}</div>`);
     }
     if (s.pump_due) {
       banners.push(`<button class="banner warn" data-action="pump_now">
