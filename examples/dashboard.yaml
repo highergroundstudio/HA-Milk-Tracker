@@ -1,0 +1,27 @@
+# Milk Tracker dashboard — replaces the old helper/markdown/button layout.
+# Settings → Dashboards → (your dashboard) → ⋮ → Raw configuration editor.
+# The cards load automatically once the integration is installed.
+title: Milk Tracker
+views:
+  - title: Milk
+    path: milk
+    icon: mdi:baby-bottle
+    type: sections
+    max_columns: 3
+    sections:
+      - type: grid
+        cards:
+          - type: custom:milk-tracker-card
+            # quick_amounts: [2, 3, 4, 5, 6]   # chips (defaults depend on unit)
+            # one_tap: true                    # chips log immediately, no confirm button
+            # default_mode: feed
+            show_recent: 3
+      - type: grid
+        cards:
+          - type: custom:milk-tracker-goal-card
+          - type: custom:milk-tracker-inventory-card
+      - type: grid
+        cards:
+          - type: custom:milk-tracker-history-card
+            days: 14
+            show_log: true

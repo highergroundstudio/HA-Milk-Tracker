@@ -1,0 +1,347 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Set up Milk Tracker",
+        "description": "Track your pumped breast milk stash, feeds, expiry dates and supply goals.",
+        "data": {
+          "baby_name": "Baby's name (optional)",
+          "unit": "Unit"
+        },
+        "data_description": {
+          "baby_name": "Used to name the device. Add another tracker later for twins.",
+          "unit": "Cannot be changed later."
+        }
+      },
+      "stash": {
+        "title": "Your current stash",
+        "description": "Enter what you already have stored so the tracker starts accurate. If you're migrating from helpers, copy your current stash value here.",
+        "data": {
+          "initial_fridge": "Milk in the fridge",
+          "initial_freezer": "Milk in the freezer",
+          "daily_intake": "Baby's daily intake"
+        }
+      }
+    },
+    "abort": {
+      "already_configured": "A tracker with this name already exists."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Milk Tracker options",
+        "data": {
+          "intake_mode": "Daily intake",
+          "pump_interval_hours": "Pump reminder interval",
+          "fridge_days": "Fridge shelf life",
+          "freezer_days": "Freezer shelf life",
+          "expiry_warning_hours": "Warn before expiry"
+        },
+        "data_description": {
+          "intake_mode": "Automatic uses your 7-day average of logged feeds to estimate days of supply.",
+          "pump_interval_hours": "The \"Pump due\" sensor turns on after this long without pumping.",
+          "fridge_days": "CDC guidance: up to 4 days.",
+          "freezer_days": "CDC guidance: best within 6 months, acceptable up to 12."
+        }
+      }
+    }
+  },
+  "selector": {
+    "unit": {
+      "options": {
+        "oz": "Fluid ounces (oz)",
+        "ml": "Millilitres (ml)"
+      }
+    },
+    "intake_mode": {
+      "options": {
+        "fixed": "Fixed (use the Daily intake setting)",
+        "auto": "Automatic (learn from logged feeds)"
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "stash": {
+        "name": "Stash"
+      },
+      "fridge": {
+        "name": "Fridge"
+      },
+      "freezer": {
+        "name": "Freezer"
+      },
+      "pumped_today": {
+        "name": "Pumped today"
+      },
+      "fed_today": {
+        "name": "Fed today"
+      },
+      "pumped_last_7_days": {
+        "name": "Pumped last 7 days"
+      },
+      "avg_pumped_per_day": {
+        "name": "Average pumped per day"
+      },
+      "avg_fed_per_day": {
+        "name": "Average fed per day"
+      },
+      "days_of_supply": {
+        "name": "Days of supply"
+      },
+      "last_pumped": {
+        "name": "Last pumped"
+      },
+      "last_fed": {
+        "name": "Last fed"
+      },
+      "next_expiry": {
+        "name": "Next expiry"
+      },
+      "goal_progress": {
+        "name": "Goal progress"
+      },
+      "goal_remaining": {
+        "name": "Goal remaining"
+      },
+      "goal_needed_per_day": {
+        "name": "Goal needed per day"
+      },
+      "days_until_goal": {
+        "name": "Days until goal"
+      }
+    },
+    "binary_sensor": {
+      "pump_due": {
+        "name": "Pump due"
+      },
+      "milk_expiring": {
+        "name": "Milk expiring"
+      }
+    },
+    "button": {
+      "undo": {
+        "name": "Undo last entry"
+      },
+      "discard_expired": {
+        "name": "Discard expired milk"
+      }
+    },
+    "number": {
+      "daily_intake": {
+        "name": "Daily intake"
+      },
+      "goal_amount": {
+        "name": "Goal amount"
+      }
+    },
+    "switch": {
+      "goal_active": {
+        "name": "Goal tracking"
+      }
+    },
+    "date": {
+      "goal_date": {
+        "name": "Goal date"
+      }
+    }
+  },
+  "exceptions": {
+    "no_tracker": {
+      "message": "No Milk Tracker is set up (or the config_entry_id is wrong)."
+    }
+  },
+  "services": {
+    "log_pump": {
+      "name": "Log pump session",
+      "description": "Add freshly pumped milk to the stash.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Tracker",
+          "description": "Which tracker (optional when you only have one)."
+        },
+        "amount": {
+          "name": "Amount",
+          "description": "Amount pumped."
+        },
+        "location": {
+          "name": "Store in",
+          "description": "Fridge or freezer."
+        },
+        "timestamp": {
+          "name": "Time",
+          "description": "When it was pumped (defaults to now)."
+        },
+        "duration_minutes": {
+          "name": "Duration",
+          "description": "Length of the session in minutes."
+        },
+        "note": {
+          "name": "Note",
+          "description": "Optional note."
+        }
+      }
+    },
+    "log_feed": {
+      "name": "Log feed",
+      "description": "Record a bottle feed. Uses the oldest milk first.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Tracker",
+          "description": "Which tracker (optional when you only have one)."
+        },
+        "amount": {
+          "name": "Amount",
+          "description": "Amount fed."
+        },
+        "source": {
+          "name": "Take from",
+          "description": "Auto uses the fridge first, then the freezer."
+        },
+        "timestamp": {
+          "name": "Time",
+          "description": "When the feed happened (defaults to now)."
+        },
+        "note": {
+          "name": "Note",
+          "description": "Optional note."
+        }
+      }
+    },
+    "discard": {
+      "name": "Discard milk",
+      "description": "Remove milk that was spilled or went bad.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Tracker",
+          "description": "Which tracker (optional when you only have one)."
+        },
+        "amount": {
+          "name": "Amount",
+          "description": "Amount to discard (omit with a batch to discard all of it)."
+        },
+        "source": {
+          "name": "From",
+          "description": "Where to discard from."
+        },
+        "batch_id": {
+          "name": "Batch",
+          "description": "A specific batch id."
+        },
+        "note": {
+          "name": "Note",
+          "description": "Reason."
+        }
+      }
+    },
+    "discard_expired": {
+      "name": "Discard expired milk",
+      "description": "Remove every batch past its use-by time.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Tracker",
+          "description": "Which tracker (optional when you only have one)."
+        }
+      }
+    },
+    "move": {
+      "name": "Move milk",
+      "description": "Freeze fridge milk or thaw frozen milk (thawed milk must be used within 24 hours).",
+      "fields": {
+        "config_entry_id": {
+          "name": "Tracker",
+          "description": "Which tracker (optional when you only have one)."
+        },
+        "amount": {
+          "name": "Amount",
+          "description": "Amount to move (omit with a batch to move all of it)."
+        },
+        "source": {
+          "name": "From",
+          "description": "Where the milk is now."
+        },
+        "destination": {
+          "name": "To",
+          "description": "Defaults to the other location."
+        },
+        "batch_id": {
+          "name": "Batch",
+          "description": "A specific batch id."
+        }
+      }
+    },
+    "set_stash": {
+      "name": "Correct stash",
+      "description": "Set the exact amount in the fridge and/or freezer.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Tracker",
+          "description": "Which tracker (optional when you only have one)."
+        },
+        "fridge": {
+          "name": "Fridge",
+          "description": "Actual amount in the fridge."
+        },
+        "freezer": {
+          "name": "Freezer",
+          "description": "Actual amount in the freezer."
+        }
+      }
+    },
+    "undo": {
+      "name": "Undo last entry",
+      "description": "Reverse the most recent log entry.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Tracker",
+          "description": "Which tracker (optional when you only have one)."
+        }
+      }
+    },
+    "delete_entry": {
+      "name": "Delete entry",
+      "description": "Reverse a specific log entry.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Tracker",
+          "description": "Which tracker (optional when you only have one)."
+        },
+        "entry_id": {
+          "name": "Entry",
+          "description": "Log entry id."
+        }
+      }
+    },
+    "configure": {
+      "name": "Configure",
+      "description": "Update goal and intake settings.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Tracker",
+          "description": "Which tracker (optional when you only have one)."
+        },
+        "goal_active": {
+          "name": "Goal tracking",
+          "description": "Turn goal tracking on or off."
+        },
+        "goal_amount": {
+          "name": "Goal amount",
+          "description": "How much milk you want stored."
+        },
+        "goal_date": {
+          "name": "Goal date",
+          "description": "When you need it by (e.g. a trip or return to work)."
+        },
+        "goal_name": {
+          "name": "Goal name",
+          "description": "e.g. Vacation, Back to work."
+        },
+        "daily_intake": {
+          "name": "Daily intake",
+          "description": "How much baby drinks per day."
+        }
+      }
+    }
+  }
+}

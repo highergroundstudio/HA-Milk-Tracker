@@ -1,0 +1,13 @@
+{
+  "domain": "milk_tracker",
+  "name": "Milk Tracker",
+  "codeowners": ["@highergroundstudio"],
+  "config_flow": true,
+  "dependencies": ["frontend", "http", "websocket_api"],
+  "documentation": "https://github.com/highergroundstudio/HA-Milk-Tracker",
+  "integration_type": "service",
+  "iot_class": "calculated",
+  "issue_tracker": "https://github.com/highergroundstudio/HA-Milk-Tracker/issues",
+  "requirements": [],
+  "version": "1.0.0"
+}

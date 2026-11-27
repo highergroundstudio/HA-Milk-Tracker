@@ -1,0 +1,101 @@
+log_pump:
+  fields:
+    config_entry_id: &tracker
+      selector:
+        config_entry:
+          integration: milk_tracker
+    amount: &amount
+      required: true
+      example: 4
+      selector:
+        number: { min: 0.1, max: 2000, step: 0.1, mode: box }
+    location:
+      default: fridge
+      selector:
+        select: { options: [fridge, freezer] }
+    timestamp: &ts
+      selector:
+        datetime:
+    duration_minutes:
+      selector:
+        number: { min: 0, max: 120, step: 1, unit_of_measurement: min, mode: box }
+    note: &note
+      selector:
+        text:
+log_feed:
+  fields:
+    config_entry_id: *tracker
+    amount: *amount
+    source: &source
+      default: auto
+      selector:
+        select: { options: [auto, fridge, freezer] }
+    timestamp: *ts
+    note: *note
+discard:
+  fields:
+    config_entry_id: *tracker
+    amount:
+      selector:
+        number: { min: 0.1, max: 2000, step: 0.1, mode: box }
+    source: *source
+    batch_id:
+      selector:
+        text:
+    note: *note
+discard_expired:
+  fields:
+    config_entry_id: *tracker
+move:
+  fields:
+    config_entry_id: *tracker
+    amount:
+      selector:
+        number: { min: 0.1, max: 2000, step: 0.1, mode: box }
+    source:
+      default: fridge
+      selector:
+        select: { options: [fridge, freezer] }
+    destination:
+      selector:
+        select: { options: [fridge, freezer] }
+    batch_id:
+      selector:
+        text:
+set_stash:
+  fields:
+    config_entry_id: *tracker
+    fridge:
+      selector:
+        number: { min: 0, max: 2000, step: 0.1, mode: box }
+    freezer:
+      selector:
+        number: { min: 0, max: 2000, step: 0.1, mode: box }
+undo:
+  fields:
+    config_entry_id: *tracker
+delete_entry:
+  fields:
+    config_entry_id: *tracker
+    entry_id:
+      required: true
+      selector:
+        text:
+configure:
+  fields:
+    config_entry_id: *tracker
+    goal_active:
+      selector:
+        boolean:
+    goal_amount:
+      selector:
+        number: { min: 0, max: 5000, step: 1, mode: box }
+    goal_date:
+      selector:
+        date:
+    goal_name:
+      selector:
+        text:
+    daily_intake:
+      selector:
+        number: { min: 0, max: 3000, step: 0.5, mode: box }

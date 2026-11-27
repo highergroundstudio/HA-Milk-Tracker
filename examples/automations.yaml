@@ -1,0 +1,57 @@
+# Example automations. Entity ids assume the tracker is called "Ava's milk";
+# check Settings → Devices & services → Milk Tracker for yours.
+
+- alias: "Milk: pump reminder"
+  triggers:
+    - trigger: state
+      entity_id: binary_sensor.ava_s_milk_pump_due
+      to: "on"
+  actions:
+    - action: notify.mobile_app_your_phone
+      data:
+        title: "Time to pump 🍼"
+        message: >
+          It's been {{ state_attr('binary_sensor.ava_s_milk_pump_due', 'hours_since_pump') | round(1) }} h
+          since your last session.
+        data:
+          tag: milk-pump-reminder
+          actions:
+            - action: MILK_LOG_4
+              title: "Log 4 oz"
+
+- alias: "Milk: log from notification"
+  triggers:
+    - trigger: event
+      event_type: mobile_app_notification_action
+      event_data:
+        action: MILK_LOG_4
+  actions:
+    - action: milk_tracker.log_pump
+      data:
+        amount: 4
+
+- alias: "Milk: expiry warning"
+  triggers:
+    - trigger: state
+      entity_id: binary_sensor.ava_s_milk_milk_expiring
+      to: "on"
+  actions:
+    - action: notify.mobile_app_your_phone
+      data:
+        title: "Fridge milk expiring"
+        message: >
+          {{ state_attr('binary_sensor.ava_s_milk_milk_expiring', 'expiring_soon') }} oz should be
+          used or frozen soon.
+
+# Log with a physical button (e.g. a Zigbee remote on the fridge).
+- alias: "Milk: fridge button logs a feed"
+  triggers:
+    - trigger: device
+      domain: zha            # replace with your button's trigger
+      device_id: YOUR_DEVICE
+      type: remote_button_short_press
+      subtype: button_1
+  actions:
+    - action: milk_tracker.log_feed
+      data:
+        amount: 4

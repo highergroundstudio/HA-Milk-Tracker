@@ -1,0 +1,31 @@
+{
+  "services": {
+    "log_pump": {
+      "service": "mdi:water-plus"
+    },
+    "log_feed": {
+      "service": "mdi:baby-bottle"
+    },
+    "discard": {
+      "service": "mdi:delete-outline"
+    },
+    "discard_expired": {
+      "service": "mdi:delete-clock-outline"
+    },
+    "move": {
+      "service": "mdi:swap-horizontal"
+    },
+    "set_stash": {
+      "service": "mdi:pencil"
+    },
+    "undo": {
+      "service": "mdi:undo-variant"
+    },
+    "delete_entry": {
+      "service": "mdi:delete"
+    },
+    "configure": {
+      "service": "mdi:cog"
+    }
+  }
+}
