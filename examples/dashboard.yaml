@@ -1,8 +1,20 @@
-# Milk Tracker dashboard — replaces the old helper/markdown/button layout.
-# Settings → Dashboards → (your dashboard) → ⋮ → Raw configuration editor.
-# The cards load automatically once the integration is installed.
+# Milk Tracker example dashboard
+#
+# How to use:
+#   1. Settings → Dashboards → Add dashboard → "New dashboard from scratch".
+#   2. Open it → ✏️ → ⋮ → "Raw configuration editor" → replace everything with this file.
+#
+# The "Milk" and "Feed station" views work as-is.
+# The "Trends" view uses entity ids. They assume the tracker is named "Milk Tracker"
+# (no baby name). If you entered a name, your ids look like sensor.ava_s_milk_stash:
+# find & replace "milk_tracker_" with your prefix (e.g. "ava_s_milk_").
+# You can check yours at Settings → Devices & services → Milk Tracker → entities.
+
 title: Milk Tracker
 views:
+  # ------------------------------------------------------------------ #
+  # Everyday view: log, stash, goal, inventory, history
+  # ------------------------------------------------------------------ #
   - title: Milk
     path: milk
     icon: mdi:baby-bottle
@@ -12,16 +24,146 @@ views:
       - type: grid
         cards:
           - type: custom:milk-tracker-card
-            # quick_amounts: [2, 3, 4, 5, 6]   # chips (defaults depend on unit)
-            # one_tap: true                    # chips log immediately, no confirm button
-            # default_mode: feed
-            show_recent: 3
+            show_today: true
+            show_recent: 4
+            # quick_amounts: [2, 3, 4, 5, 6]
+            # default_mode: pump
       - type: grid
         cards:
           - type: custom:milk-tracker-goal-card
+            icon: mdi:airplane
           - type: custom:milk-tracker-inventory-card
+            max_rows: 4
       - type: grid
         cards:
           - type: custom:milk-tracker-history-card
             days: 14
             show_log: true
+            log_entries: 8
+
+  # ------------------------------------------------------------------ #
+  # Long-term trends + settings (uses entity ids — see note at the top)
+  # ------------------------------------------------------------------ #
+  - title: Trends
+    path: trends
+    icon: mdi:chart-line
+    type: sections
+    max_columns: 3
+    sections:
+      - type: grid
+        cards:
+          - type: heading
+            heading: At a glance
+            icon: mdi:gauge
+          - type: tile
+            entity: sensor.milk_tracker_days_of_supply
+            name: Days of supply
+            grid_options: { columns: 6 }
+          - type: tile
+            entity: sensor.milk_tracker_average_pumped_per_day
+            name: Avg pumped / day
+            grid_options: { columns: 6 }
+          - type: tile
+            entity: sensor.milk_tracker_average_fed_per_day
+            name: Avg fed / day
+            grid_options: { columns: 6 }
+          - type: tile
+            entity: sensor.milk_tracker_pumped_last_7_days
+            name: Pumped (7 days)
+            grid_options: { columns: 6 }
+          - type: tile
+            entity: sensor.milk_tracker_last_pumped
+            name: Last pumped
+            grid_options: { columns: 6 }
+          - type: tile
+            entity: sensor.milk_tracker_next_expiry
+            name: Next expiry
+            grid_options: { columns: 6 }
+          - type: tile
+            entity: binary_sensor.milk_tracker_pump_due
+            name: Pump due
+            grid_options: { columns: 6 }
+          - type: tile
+            entity: binary_sensor.milk_tracker_milk_expiring
+            name: Milk expiring
+            grid_options: { columns: 6 }
+
+      - type: grid
+        column_span: 2
+        cards:
+          - type: heading
+            heading: Stash over time
+            icon: mdi:chart-areaspline
+          - type: statistics-graph
+            title: Stash (daily average)
+            entities:
+              - entity: sensor.milk_tracker_fridge
+                name: Fridge
+              - entity: sensor.milk_tracker_freezer
+                name: Freezer
+              - entity: sensor.milk_tracker_stash
+                name: Total
+            stat_types: [mean]
+            period: day
+            days_to_show: 60
+            chart_type: line
+            grid_options: { columns: full }
+          - type: history-graph
+            title: Last 48 hours
+            hours_to_show: 48
+            entities:
+              - entity: sensor.milk_tracker_stash
+                name: Stash
+              - entity: sensor.milk_tracker_pumped_today
+                name: Pumped today
+              - entity: sensor.milk_tracker_fed_today
+                name: Fed today
+            grid_options: { columns: full }
+
+      - type: grid
+        cards:
+          - type: heading
+            heading: Settings
+            icon: mdi:cog-outline
+          - type: entities
+            entities:
+              - entity: number.milk_tracker_daily_intake
+                name: Baby's daily intake
+              - entity: switch.milk_tracker_goal_tracking
+                name: Goal tracking
+              - entity: number.milk_tracker_goal_amount
+                name: Goal amount
+              - entity: date.milk_tracker_goal_date
+                name: Goal date
+              - type: divider
+              - entity: button.milk_tracker_undo_last_entry
+                name: Undo last entry
+              - entity: button.milk_tracker_discard_expired_milk
+                name: Discard expired milk
+            grid_options: { columns: full }
+          - type: markdown
+            content: >-
+              Shelf life, pump reminder interval and automatic intake are under
+              **Settings → Devices & services → Milk Tracker → Configure**.
+            grid_options: { columns: full }
+
+  # ------------------------------------------------------------------ #
+  # Tablet / fridge-door view: big one-tap buttons, nothing else
+  # ------------------------------------------------------------------ #
+  - title: Feed station
+    path: station
+    icon: mdi:tablet
+    type: sections
+    max_columns: 2
+    sections:
+      - type: grid
+        cards:
+          - type: custom:milk-tracker-card
+            title: Tap to log
+            one_tap: true
+            show_today: true
+            show_recent: 2
+      - type: grid
+        cards:
+          - type: custom:milk-tracker-inventory-card
+            max_rows: 3
