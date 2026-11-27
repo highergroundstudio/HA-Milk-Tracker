@@ -24,6 +24,7 @@ from .const import (
     KIND_FEED,
     KIND_FREEZE,
     KIND_PUMP,
+    KIND_STOCK,
     KIND_THAW,
     LOC_FREEZER,
     LOC_FRIDGE,
@@ -109,6 +110,11 @@ class MilkTracker:
         if thawed is not None:
             return thawed + timedelta(hours=THAWED_HOURS)
         return fridge_limit
+
+    @staticmethod
+    def is_undated(batch: dict[str, Any]) -> bool:
+        """Milk entered as a lump sum (setup / correction) with no real pump date."""
+        return bool(batch.get("undated")) or batch.get("note") in ("Correction", "Starting stash")
 
     def amount_in(self, location: str) -> float:
         return sum(b["remaining"] for b in self.batches if b["location"] == location)
@@ -357,12 +363,56 @@ class MilkTracker:
             return None
         if diff > 0:
             batch = self._create_batch(diff, location, ts, note="Correction")
+            batch["undated"] = True
             ops = [{"b": batch["id"], "d": batch["amount"], "new": True, "snap": self._snapshot(batch)}]
         else:
             _, ops = self._take(-diff, location)
         return self._append(
             {"ts": _iso(ts), "kind": KIND_ADJUST, "amount": _r(diff),
              "location": location, "note": "Stash correction", "ops": ops}
+        )
+
+    def add_stored(
+        self,
+        amount: float,
+        pumped_at: datetime,
+        ts: datetime,
+        *,
+        location: str,
+        replace_undated: bool = True,
+        note: str | None = None,
+        date_only: bool = False,
+    ) -> dict[str, Any]:
+        """Record milk that is already stored, with the date it was pumped.
+
+        With ``replace_undated`` the same amount is taken out of undated milk
+        (the starting stash / corrections), so the total stays the same and
+        the milk simply gains a real date. It never counts as pumping.
+        """
+        amount = self._validate_amount(amount)
+        ops: list[dict[str, Any]] = []
+        replaced = 0.0
+        if replace_undated:
+            left = amount
+            for batch in sorted(
+                (b for b in self.batches if b["location"] == location and self.is_undated(b)),
+                key=lambda b: b["pumped_at"],
+            ):
+                if left <= EPSILON:
+                    break
+                take = min(batch["remaining"], left)
+                batch["remaining"] = _r(batch["remaining"] - take, 4)
+                ops.append({"b": batch["id"], "d": -_r(take, 4), "snap": self._snapshot(batch)})
+                left -= take
+                replaced += take
+            self._prune()
+        batch = self._create_batch(amount, location, pumped_at, note=note)
+        if date_only:
+            batch["date_only"] = True
+        ops.append({"b": batch["id"], "d": batch["amount"], "new": True, "snap": self._snapshot(batch)})
+        return self._append(
+            {"ts": _iso(ts), "kind": KIND_STOCK, "amount": _r(amount), "replaced": _r(replaced),
+             "pumped_at": _iso(pumped_at), "location": location, "note": note, "ops": ops}
         )
 
     def undo(self, entry_id: str | None = None) -> dict[str, Any]:
@@ -474,7 +524,7 @@ class MilkTracker:
         total = fridge + freezer
 
         warn_until = now + timedelta(hours=expiry_warning_hours)
-        expired = expiring = 0.0
+        expired = expiring = undated_amount = 0.0
         next_expiry: datetime | None = None
         batches_out = []
         for batch in sorted(self.batches, key=lambda b: (b["location"], self.expires_at(b))):
@@ -489,7 +539,12 @@ class MilkTracker:
                 status = "ok"
             if exp > now and (next_expiry is None or exp < next_expiry):
                 next_expiry = exp
-            batches_out.append({**batch, "expires_at": _iso(exp), "status": status})
+            undated = self.is_undated(batch)
+            if undated:
+                undated_amount += batch["remaining"]
+            batches_out.append(
+                {**batch, "expires_at": _iso(exp), "status": status, "undated": undated}
+            )
 
         hours_since_pump = (now - last_pump).total_seconds() / 3600 if last_pump else None
 
@@ -552,6 +607,7 @@ class MilkTracker:
             "next_expiry": _iso(next_expiry) if next_expiry else None,
             "expiring_amount": _r(expiring),
             "expired_amount": _r(expired),
+            "undated_amount": _r(undated_amount),
             "batches": batches_out,
             "goal": goal,
             "history": history,

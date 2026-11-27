@@ -17,6 +17,7 @@ from homeassistant.util import dt as dt_util
 from .const import (
     CONF_BABY_NAME,
     CONF_DAILY_INTAKE,
+    CONF_DEFAULT_LOCATION,
     CONF_EXPIRY_WARNING_HOURS,
     CONF_FREEZER_DAYS,
     CONF_FRIDGE_DAYS,
@@ -25,6 +26,7 @@ from .const import (
     CONF_INTAKE_MODE,
     CONF_PUMP_INTERVAL_HOURS,
     CONF_UNIT,
+    CONF_USE_FRIDGE,
     DEFAULT_DAILY_INTAKE_OZ,
     DEFAULT_EXPIRY_WARNING_HOURS,
     DEFAULT_FREEZER_DAYS,
@@ -75,6 +77,17 @@ class MilkTrackerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     @property
     def baby_name(self) -> str:
         return self.config_entry.data.get(CONF_BABY_NAME) or "Baby"
+
+    @property
+    def use_fridge(self) -> bool:
+        return bool(self._opt(CONF_USE_FRIDGE, True))
+
+    @property
+    def default_location(self) -> str:
+        """Where new pumps go when no location is given."""
+        if not self.use_fridge:
+            return LOC_FREEZER
+        return self._opt(CONF_DEFAULT_LOCATION, LOC_FREEZER)
 
     def _opt(self, key: str, default: Any) -> Any:
         return self.config_entry.options.get(key, self.config_entry.data.get(key, default))
@@ -174,6 +187,8 @@ class MilkTrackerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             "unit": self.unit,
             "fridge_days": self.tracker.fridge_days,
             "freezer_days": self.tracker.freezer_days,
+            "use_fridge": self.use_fridge,
+            "default_location": self.default_location,
             "summary": self.data or self.compute(),
             "log": self.recent_log(log_limit),
         }

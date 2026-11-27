@@ -92,9 +92,32 @@ async def test_full_flow(hass: HomeAssistant, hass_ws_client) -> None:
     result = await hass.config_entries.options.async_init(entry.entry_id)
     result = await hass.config_entries.options.async_configure(
         result["flow_id"],
-        {"intake_mode": "auto", "pump_interval_hours": 3, "fridge_days": 4,
-         "freezer_days": 180, "expiry_warning_hours": 12},
+        {"use_fridge": False, "default_location": "fridge", "intake_mode": "auto",
+         "pump_interval_hours": 3, "fridge_days": 4, "freezer_days": 180,
+         "expiry_warning_hours": 12},
     )
     assert result["type"] is FlowResultType.CREATE_ENTRY
+
+    await hass.async_block_till_done()
+    freezer_before = float(hass.states.get("sensor.ava_s_milk_freezer").state)
+    # Fridge turned off -> pumps without a location go to the freezer.
+    await hass.services.async_call(DOMAIN, "log_pump", {"amount": 3}, blocking=True)
+    await hass.async_block_till_done()
+    assert float(hass.states.get("sensor.ava_s_milk_freezer").state) == freezer_before + 3
+
+    # Date existing freezer milk without changing the total.
+    resp = await hass.services.async_call(
+        DOMAIN, "add_stored", {"amount": 5, "pumped_at": "2026-10-01"},
+        blocking=True, return_response=True,
+    )
+    assert resp["entry"]["replaced"] == 5
+    await hass.async_block_till_done()
+    assert float(hass.states.get("sensor.ava_s_milk_freezer").state) == freezer_before + 3
+
+    await client.send_json({"id": 2, "type": f"{DOMAIN}/subscribe"})
+    msg = await client.receive_json()
+    msg = await client.receive_json()
+    assert msg["event"]["use_fridge"] is False
+    assert msg["event"]["default_location"] == "freezer"
 
     assert await hass.config_entries.async_unload(entry.entry_id)

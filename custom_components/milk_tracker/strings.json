@@ -32,6 +32,8 @@
       "init": {
         "title": "Milk Tracker options",
         "data": {
+          "use_fridge": "Use the fridge",
+          "default_location": "New milk goes to",
           "intake_mode": "Daily intake",
           "pump_interval_hours": "Pump reminder interval",
           "fridge_days": "Fridge shelf life",
@@ -39,6 +41,8 @@
           "expiry_warning_hours": "Warn before expiry"
         },
         "data_description": {
+          "use_fridge": "Turn off if all your milk goes straight into the freezer. Fridge options are hidden from the cards.",
+          "default_location": "Pre-selected when logging a pump session (always the freezer if the fridge is off).",
           "intake_mode": "Automatic uses your 7-day average of logged feeds to estimate days of supply.",
           "pump_interval_hours": "The \"Pump due\" sensor turns on after this long without pumping.",
           "fridge_days": "CDC guidance: up to 4 days.",
@@ -58,6 +62,12 @@
       "options": {
         "fixed": "Fixed (use the Daily intake setting)",
         "auto": "Automatic (learn from logged feeds)"
+      }
+    },
+    "default_location": {
+      "options": {
+        "freezer": "Freezer",
+        "fridge": "Fridge"
       }
     }
   },
@@ -167,7 +177,7 @@
         },
         "location": {
           "name": "Store in",
-          "description": "Fridge or freezer."
+          "description": "Fridge or freezer (defaults to the tracker's setting)."
         },
         "timestamp": {
           "name": "Time",
@@ -340,6 +350,36 @@
         "daily_intake": {
           "name": "Daily intake",
           "description": "How much baby drinks per day."
+        }
+      }
+    },
+    "add_stored": {
+      "name": "Add stored milk",
+      "description": "Record milk that's already in storage, with the date it was pumped. Doesn't count as pumping.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Tracker",
+          "description": "Which tracker (optional when you only have one)."
+        },
+        "amount": {
+          "name": "Amount",
+          "description": "Amount in the bag."
+        },
+        "pumped_at": {
+          "name": "Pumped on",
+          "description": "Date (or date and time) the milk was pumped."
+        },
+        "location": {
+          "name": "Stored in",
+          "description": "Defaults to the freezer."
+        },
+        "replace_undated": {
+          "name": "Take from undated milk",
+          "description": "Move this amount out of your undated starting stash so the total stays the same. Turn off to add new milk on top."
+        },
+        "note": {
+          "name": "Note",
+          "description": "Optional note."
         }
       }
     }

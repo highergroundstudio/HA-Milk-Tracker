@@ -18,6 +18,8 @@ CONF_FRIDGE_DAYS: Final = "fridge_days"
 CONF_FREEZER_DAYS: Final = "freezer_days"
 CONF_EXPIRY_WARNING_HOURS: Final = "expiry_warning_hours"
 CONF_PUMP_INTERVAL_HOURS: Final = "pump_interval_hours"
+CONF_USE_FRIDGE: Final = "use_fridge"
+CONF_DEFAULT_LOCATION: Final = "default_location"
 
 UNIT_OZ: Final = "oz"
 UNIT_ML: Final = "ml"
@@ -46,6 +48,7 @@ KIND_DISCARD: Final = "discard"
 KIND_FREEZE: Final = "freeze"
 KIND_THAW: Final = "thaw"
 KIND_ADJUST: Final = "adjust"
+KIND_STOCK: Final = "stock"
 
 # Services
 SERVICE_LOG_PUMP: Final = "log_pump"
@@ -57,6 +60,7 @@ SERVICE_SET_STASH: Final = "set_stash"
 SERVICE_UNDO: Final = "undo"
 SERVICE_DELETE_ENTRY: Final = "delete_entry"
 SERVICE_CONFIGURE: Final = "configure"
+SERVICE_ADD_STORED: Final = "add_stored"
 
 ATTR_CONFIG_ENTRY_ID: Final = "config_entry_id"
 ATTR_AMOUNT: Final = "amount"
@@ -68,6 +72,8 @@ ATTR_NOTE: Final = "note"
 ATTR_ENTRY_ID: Final = "entry_id"
 ATTR_BATCH_ID: Final = "batch_id"
 ATTR_DURATION: Final = "duration_minutes"
+ATTR_PUMPED_AT: Final = "pumped_at"
+ATTR_REPLACE_UNDATED: Final = "replace_undated"
 
 EVENT_MILK_LOGGED: Final = "milk_tracker_logged"
 

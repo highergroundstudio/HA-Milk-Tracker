@@ -143,3 +143,32 @@ def test_group_move_and_discard_by_batch_list():
     t.undo(d["id"])
     t.undo(e["id"])
     assert t.amount_in("fridge") == 5 and t.amount_in("freezer") == 0
+
+
+def test_add_stored_dates_undated_milk_without_changing_total():
+    t = MilkTracker()
+    t.set_stash("freezer", 144, T0)
+    assert all(t.is_undated(b) for b in t.batches)
+    e = t.add_stored(10, T0 - timedelta(days=40), T0, location="freezer")
+    assert e["kind"] == "stock" and e["replaced"] == 10
+    assert t.amount_in("freezer") == 144
+    s = summary(t, T0)
+    assert s["undated_amount"] == 134
+    assert s["pumped_today"] == 0  # stored milk never counts as pumping
+    dated = next(b for b in s["batches"] if not b["undated"])
+    assert dated["expires_at"].startswith((T0 - timedelta(days=40) + timedelta(days=180)).date().isoformat())
+    # Adding more than the undated amount only replaces what's left.
+    e2 = t.add_stored(200, T0 - timedelta(days=30), T0, location="freezer")
+    assert e2["replaced"] == 134
+    assert t.amount_in("freezer") == 210
+    t.undo(e2["id"])
+    t.undo(e["id"])
+    assert t.amount_in("freezer") == 144
+    assert summary(t, T0)["undated_amount"] == 144
+
+
+def test_add_stored_without_replacing_adds_on_top():
+    t = MilkTracker()
+    t.set_stash("freezer", 20, T0)
+    t.add_stored(5, T0 - timedelta(days=3), T0, location="freezer", replace_undated=False)
+    assert t.amount_in("freezer") == 25

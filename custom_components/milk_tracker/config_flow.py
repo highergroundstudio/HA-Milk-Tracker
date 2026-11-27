@@ -13,6 +13,7 @@ from homeassistant.config_entries import (
 )
 from homeassistant.core import callback
 from homeassistant.helpers.selector import (
+    BooleanSelector,
     NumberSelector,
     NumberSelectorConfig,
     NumberSelectorMode,
@@ -25,6 +26,7 @@ from homeassistant.helpers.selector import (
 from .const import (
     CONF_BABY_NAME,
     CONF_DAILY_INTAKE,
+    CONF_DEFAULT_LOCATION,
     CONF_EXPIRY_WARNING_HOURS,
     CONF_FREEZER_DAYS,
     CONF_FRIDGE_DAYS,
@@ -33,6 +35,7 @@ from .const import (
     CONF_INTAKE_MODE,
     CONF_PUMP_INTERVAL_HOURS,
     CONF_UNIT,
+    CONF_USE_FRIDGE,
     DEFAULT_DAILY_INTAKE_ML,
     DEFAULT_DAILY_INTAKE_OZ,
     DEFAULT_EXPIRY_WARNING_HOURS,
@@ -42,6 +45,8 @@ from .const import (
     DOMAIN,
     INTAKE_AUTO,
     INTAKE_FIXED,
+    LOC_FREEZER,
+    LOC_FRIDGE,
     UNIT_ML,
     UNIT_OZ,
 )
@@ -129,6 +134,18 @@ class MilkTrackerOptionsFlow(OptionsFlow):
             step_id="init",
             data_schema=vol.Schema(
                 {
+                    vol.Required(
+                        CONF_USE_FRIDGE, default=o.get(CONF_USE_FRIDGE, True)
+                    ): BooleanSelector(),
+                    vol.Required(
+                        CONF_DEFAULT_LOCATION, default=o.get(CONF_DEFAULT_LOCATION, LOC_FREEZER)
+                    ): SelectSelector(
+                        SelectSelectorConfig(
+                            options=[LOC_FREEZER, LOC_FRIDGE],
+                            translation_key=CONF_DEFAULT_LOCATION,
+                            mode=SelectSelectorMode.LIST,
+                        )
+                    ),
                     vol.Required(
                         CONF_INTAKE_MODE, default=o.get(CONF_INTAKE_MODE, INTAKE_FIXED)
                     ): SelectSelector(

@@ -26,6 +26,9 @@
     },
     "configure": {
       "service": "mdi:cog"
+    },
+    "add_stored": {
+      "service": "mdi:calendar-plus"
     }
   }
 }

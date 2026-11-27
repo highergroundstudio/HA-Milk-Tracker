@@ -27,7 +27,7 @@ PLATFORMS: list[Platform] = [
 
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
-VERSION = "1.0.0-beta.2"
+VERSION = "1.0.0-beta.3"
 
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:

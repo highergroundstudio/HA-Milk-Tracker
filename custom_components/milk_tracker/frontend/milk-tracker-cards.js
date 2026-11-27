@@ -10,7 +10,7 @@
  * no external dependencies — plain web components.
  */
 
-const VERSION = "1.0.0-beta.2";
+const VERSION = "1.0.0-beta.3";
 const DOMAIN = "milk_tracker";
 
 /* ------------------------------------------------------------------ */
@@ -74,6 +74,7 @@ const KIND = {
   freeze: { icon: "mdi:snowflake", label: "Froze", cls: "freezer" },
   thaw: { icon: "mdi:snowflake-melt", label: "Thawed", cls: "fridge" },
   adjust: { icon: "mdi:pencil", label: "Corrected", cls: "muted" },
+  stock: { icon: "mdi:calendar-plus", label: "Added stored", cls: "freezer" },
 };
 
 const LOC = {
@@ -95,6 +96,8 @@ function entryText(e, unit) {
     case "freeze":
     case "thaw":
       return `${k.label} ${amt}`;
+    case "stock":
+      return `${k.label} ${amt} <span class="sub">· pumped ${new Date(e.pumped_at).toLocaleDateString(undefined, { month: "short", day: "numeric" })}${e.replaced ? " · dated from stash" : ""}</span>`;
     case "adjust":
       return `${k.label} ${LOC[e.location]?.label ?? ""} ${e.amount > 0 ? "+" : "−"}${amt}`;
     default:
@@ -377,11 +380,26 @@ class MilkTrackerBase extends HTMLElement {
       this.shadowRoot.innerHTML = this._shell(`<div class="empty">Loading…</div>`);
       return;
     }
+    // Keep values the user has typed (live updates re-render every minute).
+    const typed = {};
+    if (!this._resetInputs) {
+      for (const el of this.shadowRoot.querySelectorAll("input[id][data-dirty]")) {
+        typed[el.id] = el.type === "checkbox" ? el.checked : el.value;
+      }
+    }
+    this._resetInputs = false;
     // Preserve focus/caret in inputs across re-renders.
     const active = this.shadowRoot.activeElement;
     const focusId = active?.id;
     const selStart = active?.selectionStart;
     this.shadowRoot.innerHTML = this._shell(this.renderCard(), this.constructor.accent);
+    for (const [id, v] of Object.entries(typed)) {
+      const el = this.shadowRoot.getElementById(id);
+      if (!el) continue;
+      if (el.type === "checkbox") el.checked = v;
+      else el.value = v;
+      el.dataset.dirty = "1";
+    }
     if (focusId) {
       const el = this.shadowRoot.getElementById(focusId);
       if (el) {
@@ -405,7 +423,11 @@ class MilkTrackerBase extends HTMLElement {
         fn.call(this, el, ev);
       }
     });
+    this.shadowRoot.addEventListener("input", (ev) => {
+      if (ev.target?.id) ev.target.dataset.dirty = "1";
+    });
     this.shadowRoot.addEventListener("change", (ev) => {
+      if (ev.target?.id) ev.target.dataset.dirty = "1";
       const el = ev.target;
       const fn = el?.dataset?.change && this[`on_${el.dataset.change}`];
       if (fn) fn.call(this, el, ev);
@@ -476,12 +498,14 @@ class MilkTrackerCard extends MilkTrackerBase {
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .stat .v { font-size: 1.15rem; font-weight: 700; margin-top: 2px; white-space: nowrap; }
     .stat .s { font-size: 0.75rem; color: var(--secondary-text-color); line-height: 1.3; }
-    .note-toggle { margin-top: 8px; display: flex; gap: 8px; }
+    .more-fields { display: grid; grid-template-columns: 1fr 1.4fr; gap: 8px; margin-bottom: 12px; }
+    .icon-btn.on { background: var(--mt-surface-2); color: var(--primary-text-color); }
     @container (max-width: 340px) {
       .stats { grid-template-columns: 1fr 1fr; }
       .stats .stat:last-child { grid-column: 1 / -1; }
       .hero .amount { font-size: 2.2rem; }
       .opts .seg { min-width: 0; }
+      .more-fields { grid-template-columns: 1fr; }
     }
     .note-toggle input { flex: 1; }
   `;
@@ -490,8 +514,10 @@ class MilkTrackerCard extends MilkTrackerBase {
     super();
     this._mode = "pump";
     this._amount = null;
-    this._location = "fridge";
+    this._location = null; // null = follow tracker / card default
     this._source = "auto";
+    this._noteVal = "";
+    this._whenVal = "";
     this._bindDelegation();
   }
 
@@ -513,6 +539,7 @@ class MilkTrackerCard extends MilkTrackerBase {
             { name: "show_today", selector: { boolean: {} } },
             { name: "show_recent", selector: { number: { min: 0, max: 10, mode: "box" } } },
             { name: "default_mode", selector: { select: { options: ["pump", "feed"] } } },
+            { name: "default_location", selector: { select: { options: ["freezer", "fridge"] } } },
           ],
         },
       ],
@@ -525,6 +552,7 @@ class MilkTrackerCard extends MilkTrackerBase {
           show_today: "Show today's stats",
           show_recent: "Recent entries to show",
           default_mode: "Default mode",
+          default_location: "Pumped milk goes to (overrides the integration setting)",
         })[s.name],
     };
   }
@@ -566,6 +594,15 @@ class MilkTrackerCard extends MilkTrackerBase {
     this._mode = el.dataset.value;
     this._render();
   }
+  get useFridge() {
+    return this._data?.use_fridge !== false;
+  }
+
+  get location() {
+    if (!this.useFridge) return "freezer";
+    return this._location || this._config.default_location || this._data?.default_location || "freezer";
+  }
+
   on_loc(el) {
     if (this._mode === "pump") this._location = el.dataset.value;
     else this._source = el.dataset.value;
@@ -591,30 +628,41 @@ class MilkTrackerCard extends MilkTrackerBase {
   }
   on_note() {
     this._showNote = !this._showNote;
+    if (!this._showNote) {
+      this._noteVal = "";
+      this._whenVal = "";
+    }
     this._render();
     if (this._showNote) this.shadowRoot.getElementById("note")?.focus();
   }
   async on_log() {
     if (this._busy) return;
     const amount = this.amount;
-    const noteEl = this.shadowRoot.getElementById("note");
-    const note = noteEl?.value?.trim() || undefined;
+    const note = this._noteVal.trim() || undefined;
+    const timestamp = this._whenVal || undefined;
+    const when = timestamp ? ` (${whenLabel(timestamp, this.locale)})` : "";
     this._busy = true;
     this._render();
+    let ok;
     if (this._mode === "pump") {
-      await this._call(
+      const location = this.location;
+      ok = await this._call(
         "log_pump",
-        { amount, location: this._location, note },
-        { toast: `Added ${withUnit(amount, this.unit)} to the ${this._location}`, undo: true }
+        { amount, location, note, timestamp },
+        { toast: `Added ${withUnit(amount, this.unit)} to the ${location}${when}`, undo: true }
       );
     } else {
-      await this._call(
+      ok = await this._call(
         "log_feed",
-        { amount, source: this._source, note },
-        { toast: `Logged a ${withUnit(amount, this.unit)} feed`, undo: true }
+        { amount, source: this.useFridge ? this._source : "auto", note, timestamp },
+        { toast: `Logged a ${withUnit(amount, this.unit)} feed${when}`, undo: true }
       );
     }
-    this._showNote = false;
+    if (ok) {
+      this._showNote = false;
+      this._noteVal = "";
+      this._whenVal = "";
+    }
     this._busy = false;
     this._render();
   }
@@ -647,7 +695,17 @@ class MilkTrackerCard extends MilkTrackerBase {
     const note = this.shadowRoot.getElementById("note");
     if (note && !note._mt) {
       note._mt = true;
+      note.addEventListener("input", () => (this._noteVal = note.value));
       note.addEventListener("keydown", (e) => e.key === "Enter" && this.on_log());
+    }
+    const when = this.shadowRoot.getElementById("when");
+    if (when && !when._mt) {
+      when._mt = true;
+      when.addEventListener("input", () => (this._whenVal = when.value));
+      when.addEventListener("change", () => {
+        this._whenVal = when.value;
+        this._render();
+      });
     }
   }
 
@@ -686,8 +744,12 @@ class MilkTrackerCard extends MilkTrackerBase {
         <span class="spacer"><b>Time to pump</b> — it's been ${duration(s.hours_since_pump * 3600000)} since your last session.</span></button>`);
     }
 
-    const locOptions = pump ? ["fridge", "freezer"] : ["auto", "fridge", "freezer"];
-    const curLoc = pump ? this._location : this._source;
+    const fridgeOn = this.useFridge;
+    const locOptions = !fridgeOn ? [] : pump ? ["freezer", "fridge"] : ["auto", "fridge", "freezer"];
+    const curLoc = pump ? this.location : this._source;
+    const pad = (n) => String(n).padStart(2, "0");
+    const now = new Date();
+    const nowLocal = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
     const chips = this.quickAmounts
       .map((q) => `<button class="chip ${!cfg.one_tap && q === this.amount ? "on" : ""}" data-action="chip" data-value="${q}">${fmtAmount(q, u)}</button>`)
       .join("");
@@ -704,13 +766,17 @@ class MilkTrackerCard extends MilkTrackerBase {
         </div>
         <ha-icon class="badge-icon" style="--accent:var(--mt-pump);margin-left:auto" icon="mdi:baby-bottle-outline"></ha-icon>
       </div>
-      <div class="stack" role="img" aria-label="Fridge ${withUnit(s.fridge, u)}, freezer ${withUnit(s.freezer, u)}">
+      ${
+        fridgeOn || s.fridge > 0
+          ? `<div class="stack" role="img" aria-label="Fridge ${withUnit(s.fridge, u)}, freezer ${withUnit(s.freezer, u)}">
         <span class="f" style="width:${fPct}%"></span><span class="z" style="width:${zPct}%"></span>
       </div>
       <div class="legend">
         <span><i style="background:var(--mt-fridge)"></i>Fridge <b>${withUnit(s.fridge, u)}</b></span>
         <span><i style="background:var(--mt-freezer)"></i>Freezer <b>${withUnit(s.freezer, u)}</b></span>
-      </div>
+      </div>`
+          : ""
+      }
       ${banners.join("")}
 
       <div class="divider"></div>
@@ -733,23 +799,34 @@ class MilkTrackerCard extends MilkTrackerBase {
               </div>`
         }
         <div class="opts">
-          <div class="seg small">
+          ${
+            !locOptions.length
+              ? `<span class="pill" style="margin-right:auto"><ha-icon icon="${pump ? "mdi:snowflake" : "mdi:auto-fix"}"></ha-icon>${pump ? "Goes in the freezer" : "Uses the oldest milk first"}</span>`
+              : `<div class="seg small">
             ${locOptions
               .map(
                 (l) => `<button class="${curLoc === l ? "on" : ""}" data-action="loc" data-value="${l}">
                   <ha-icon icon="${LOC[l].icon}"></ha-icon>${pump ? LOC[l].label : l === "auto" ? "Oldest" : LOC[l].label}</button>`
               )
               .join("")}
-          </div>
-          <button class="icon-btn" data-action="note" title="Add a note" aria-label="Add a note"><ha-icon icon="mdi:note-edit-outline"></ha-icon></button>
+          </div>`
+          }
+          <button class="icon-btn ${this._showNote ? "on" : ""}" data-action="note" title="Add a note or an earlier time" aria-label="Add a note or an earlier time"><ha-icon icon="${this._showNote ? "mdi:close" : "mdi:clock-edit-outline"}"></ha-icon></button>
         </div>
-        ${this._showNote ? `<div class="field" style="margin-bottom:12px"><input id="note" maxlength="120" placeholder="Note (optional) — e.g. left side, after nap"></div>` : ""}
+        ${
+          this._showNote
+            ? `<div class="more-fields">
+                <label class="field">When<input id="when" type="datetime-local" max="${nowLocal}" value="${esc(this._whenVal || nowLocal)}"></label>
+                <label class="field">Note<input id="note" maxlength="120" placeholder="Optional — e.g. left side" value="${esc(this._noteVal)}"></label>
+              </div>`
+            : ""
+        }
         ${
           cfg.one_tap
             ? ""
             : `<button class="primary-btn" data-action="log" ${this._busy ? "disabled" : ""}>
                 <ha-icon icon="${pump ? "mdi:plus" : "mdi:minus"}"></ha-icon>
-                ${pump ? `Add ${withUnit(this.amount, u)} to ${LOC[this._location].label.toLowerCase()}` : `Log ${withUnit(this.amount, u)} feed`}
+                ${pump ? `Add ${withUnit(this.amount, u)} to ${LOC[this.location].label.toLowerCase()}` : `Log ${withUnit(this.amount, u)} feed`}${this._whenVal ? ` · ${whenLabel(this._whenVal, this.locale)}` : ""}
               </button>`
         }
       </div>
@@ -1222,11 +1299,23 @@ class MilkTrackerInventoryCard extends MilkTrackerBase {
     .actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 12px; }
     .actions .primary-btn { width: auto; min-height: 40px; padding: 8px 18px; font-size: .9rem; }
     .loc + .loc { margin-top: 14px; }
+    .banner { --mdc-icon-size: 20px; display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 10px;
+      margin-bottom: 12px; font-size: .88rem; cursor: pointer; border: none; width: 100%; text-align: left;
+      background: color-mix(in srgb, var(--mt-freezer) 14%, transparent); }
+    .banner ha-icon { color: var(--mt-freezer); }
+    .check { display: flex; gap: 8px; align-items: flex-start; font-size: .85rem; margin-top: 10px; cursor: pointer; }
+    .check input { margin-top: 2px; accent-color: var(--mt-freezer); width: 16px; height: 16px; flex: none; }
+    .hint { font-size: .85rem; color: var(--secondary-text-color); margin-bottom: 12px; }
+    .seg-wrap { grid-column: 1 / -1; }
+    .icon-btn.on { background: var(--mt-surface-2); color: var(--primary-text-color); }
   `;
 
   constructor() {
     super();
     this._editing = false;
+    this._adding = false;
+    this._addLoc = null;
+    this._lastDate = null;
     this._bindDelegation();
   }
 
@@ -1238,12 +1327,61 @@ class MilkTrackerInventoryCard extends MilkTrackerBase {
     return { columns: 12, min_columns: 6, rows: "auto" };
   }
 
+  get useFridge() {
+    return this._data?.use_fridge !== false;
+  }
+
   on_edit() {
     this._editing = !this._editing;
+    this._adding = false;
+    this._resetInputs = true;
     this._render();
   }
+  on_add() {
+    this._adding = !this._adding;
+    this._editing = false;
+    this._resetInputs = true;
+    this._render();
+    if (this._adding) this.shadowRoot.getElementById("a-amount")?.focus();
+  }
+  on_add_loc(el) {
+    this._addLoc = el.dataset.value;
+    this._render();
+  }
+  async on_add_save() {
+    const $ = (id) => this.shadowRoot.getElementById(id);
+    const amount = parseFloat($("a-amount").value);
+    const date = $("a-date").value;
+    if (!(amount > 0) || !date) {
+      this._toast("Enter an amount and the date it was pumped");
+      return;
+    }
+    const replace = $("a-replace") ? $("a-replace").checked : false;
+    const location = this.useFridge ? this._addLoc || "freezer" : "freezer";
+    const note = $("a-note")?.value.trim() || undefined;
+    const res = await this._call(
+      "add_stored",
+      { amount, pumped_at: date, location, replace_undated: replace, note },
+      { toast: `Added ${withUnit(amount, this.unit)} pumped ${dateLabel(date, this.locale)}`, undo: true }
+    );
+    if (res) {
+      // Stay open so several bags can be entered in a row; keep the date.
+      this._lastDate = date;
+      const a = $("a-amount");
+      if (a) {
+        a.value = "";
+        delete a.dataset.dirty;
+        a.focus();
+      }
+      const n = $("a-note");
+      if (n) {
+        n.value = "";
+        delete n.dataset.dirty;
+      }
+    }
+  }
   async on_save() {
-    const f = parseFloat(this.shadowRoot.getElementById("i-fridge").value);
+    const f = parseFloat(this.shadowRoot.getElementById("i-fridge")?.value);
     const z = parseFloat(this.shadowRoot.getElementById("i-freezer").value);
     const data = {};
     if (!Number.isNaN(f)) data.fridge = Math.max(0, f);
@@ -1263,17 +1401,17 @@ class MilkTrackerInventoryCard extends MilkTrackerBase {
     const map = new Map();
     for (const b of s.batches) {
       const day = new Date(b.pumped_at).toLocaleDateString("en-CA");
-      const key = `${b.location}|${day}|${b.thawed_at ? "t" : ""}|${b.status}`;
+      const key = `${b.location}|${b.undated ? "undated" : day}|${b.thawed_at ? "t" : ""}|${b.status}`;
       let g = map.get(key);
       if (!g) {
-        g = { id: key, location: b.location, day, thawed: !!b.thawed_at, status: b.status, batches: [], remaining: 0, expires_at: b.expires_at, notes: new Set() };
+        g = { id: key, location: b.location, day, undated: !!b.undated, thawed: !!b.thawed_at, status: b.status, batches: [], remaining: 0, expires_at: b.expires_at, notes: new Set() };
         map.set(key, g);
       }
       g.batches.push(b);
       g.remaining += b.remaining;
       if (b.expires_at < g.expires_at) g.expires_at = b.expires_at;
       if (rank[b.status] > rank[g.status]) g.status = b.status;
-      if (b.note && b.note !== "Correction") g.notes.add(b.note);
+      if (b.note && b.note !== "Correction" && b.note !== "Starting stash") g.notes.add(b.note);
     }
     return [...map.values()].sort((a, b) => (a.expires_at < b.expires_at ? -1 : 1));
   }
@@ -1306,6 +1444,7 @@ class MilkTrackerInventoryCard extends MilkTrackerBase {
   _expiryPill(g) {
     const ms = new Date(g.expires_at) - Date.now();
     if (g.status === "expired") return `<span class="pill error">Expired</span>`;
+    if (g.undated) return `<span class="pill">No pump date</span>`;
     const txt = g.thawed
       ? `Thawed · use within ${duration(ms)}`
       : ms > 14 * 86400000
@@ -1323,14 +1462,48 @@ class MilkTrackerInventoryCard extends MilkTrackerBase {
       <div class="spacer"><div class="title">${esc(this._config.title || "Inventory")}</div>
         <div class="subtitle">Oldest milk is used first</div></div>
       ${s.expired_amount > 0 ? `<button class="icon-btn ${this._confirm === "expired" ? "confirm" : ""}" data-action="discard_expired" title="${this._confirm === "expired" ? "Tap again to discard expired" : "Discard expired"}"><ha-icon icon="mdi:delete-clock-outline"></ha-icon></button>` : ""}
+      <button class="icon-btn ${this._adding ? "on" : ""}" data-action="add" title="Add stored milk with its date" aria-label="Add stored milk"><ha-icon icon="${this._adding ? "mdi:close" : "mdi:calendar-plus"}"></ha-icon></button>
       <button class="icon-btn" data-action="edit" title="Correct amounts" aria-label="Correct amounts"><ha-icon icon="${this._editing ? "mdi:close" : "mdi:pencil-outline"}"></ha-icon></button>
     </div>`;
+    const fridgeOn = this.useFridge;
+    const undatedIn = (loc) =>
+      s.batches.filter((b) => b.undated && b.location === loc).reduce((a, b) => a + b.remaining, 0);
+
+    if (this._adding) {
+      const loc = fridgeOn ? this._addLoc || "freezer" : "freezer";
+      const undated = undatedIn(loc);
+      const pad = (n) => String(n).padStart(2, "0");
+      const t = new Date();
+      const today = `${t.getFullYear()}-${pad(t.getMonth() + 1)}-${pad(t.getDate())}`;
+      return `${header}
+        <div class="hint">Enter bags that are already stored, with the date each was pumped, so you get accurate best-by dates. This doesn't count as pumping.</div>
+        <div class="form">
+          ${
+            fridgeOn
+              ? `<div class="seg small seg-wrap">${["freezer", "fridge"]
+                  .map((l) => `<button class="${loc === l ? "on" : ""}" data-action="add_loc" data-value="${l}"><ha-icon icon="${LOC[l].icon}"></ha-icon>${LOC[l].label}</button>`)
+                  .join("")}</div>`
+              : ""
+          }
+          <label class="field">Amount (${u})<input id="a-amount" type="number" inputmode="decimal" min="0" step="${u === "ml" ? 10 : 0.5}" placeholder="e.g. ${u === "ml" ? 120 : 4}"></label>
+          <label class="field">Pumped on<input id="a-date" type="date" max="${today}" value="${esc(this._lastDate || "")}"></label>
+          <label class="field" style="grid-column:1/-1">Note<input id="a-note" maxlength="80" placeholder="Optional — e.g. bag #3"></label>
+        </div>
+        ${
+          undated > 0
+            ? `<label class="check"><input id="a-replace" type="checkbox" checked>
+                <span>Take it from my undated milk (<b>${withUnit(undated, u)}</b> left) so the total stays the same.<br><span class="muted">Untick to add milk that isn't counted yet.</span></span></label>`
+            : ""
+        }
+        <div class="actions"><button class="ghost-btn" data-action="add">Done</button>
+          <button class="primary-btn" data-action="add_save"><ha-icon icon="mdi:plus"></ha-icon>Add bag</button></div>`;
+    }
 
     if (this._editing) {
       return `${header}
         <div class="muted" style="font-size:.88rem;margin-bottom:12px">Counted your bags? Enter the real amounts and the tracker will adjust (oldest milk is removed first).</div>
         <div class="form">
-          <label class="field">Fridge (${u})<input id="i-fridge" type="number" inputmode="decimal" min="0" step="0.1" value="${s.fridge}"></label>
+          ${fridgeOn || s.fridge > 0 ? `<label class="field">Fridge (${u})<input id="i-fridge" type="number" inputmode="decimal" min="0" step="0.1" value="${s.fridge}"></label>` : ""}
           <label class="field">Freezer (${u})<input id="i-freezer" type="number" inputmode="decimal" min="0" step="0.1" value="${s.freezer}"></label>
         </div>
         <div class="actions"><button class="ghost-btn" data-action="edit">Cancel</button>
@@ -1357,13 +1530,17 @@ class MilkTrackerInventoryCard extends MilkTrackerBase {
                   const n = g.batches.length;
                   return `<div class="item ${g.status}">
                     <div class="body">
-                      <div class="line1">${dateLabel(g.day, this.locale)} <span class="sub">· ${n === 1 ? new Date(g.batches[0].pumped_at).toLocaleTimeString(this.locale, { hour: "numeric", minute: "2-digit" }) : plural(n, "pump")}</span></div>
+                      <div class="line1">${
+                        g.undated
+                          ? `Undated milk <span class="sub">· added ${dateLabel(g.day, this.locale, { month: "short", day: "numeric" })}</span>`
+                          : `${dateLabel(g.day, this.locale)} <span class="sub">· ${n > 1 ? plural(n, "bag") : g.batches[0].date_only ? "stored" : new Date(g.batches[0].pumped_at).toLocaleTimeString(this.locale, { hour: "numeric", minute: "2-digit" })}</span>`
+                      }</div>
                       <div class="line2">${this._expiryPill(g)}${g.notes.size ? ` · ${esc([...g.notes].join(", "))}` : ""}</div>
                       <div class="bar"><span style="width:${(g.remaining / max) * 100}%"></span></div>
                     </div>
                     <div class="amt">${withUnit(g.remaining, u)}</div>
                     <div class="acts">
-                      ${g.status !== "expired" && !g.thawed ? `<button class="icon-btn" data-action="move" data-id="${esc(g.id)}" title="${loc === "fridge" ? "Move to freezer" : "Thaw (move to fridge)"}" aria-label="${loc === "fridge" ? "Freeze" : "Thaw"}"><ha-icon icon="${loc === "fridge" ? "mdi:snowflake" : "mdi:snowflake-melt"}"></ha-icon></button>` : ""}
+                      ${g.status !== "expired" && !g.thawed && fridgeOn ? `<button class="icon-btn" data-action="move" data-id="${esc(g.id)}" title="${loc === "fridge" ? "Move to freezer" : "Thaw (move to fridge)"}" aria-label="${loc === "fridge" ? "Freeze" : "Thaw"}"><ha-icon icon="${loc === "fridge" ? "mdi:snowflake" : "mdi:snowflake-melt"}"></ha-icon></button>` : ""}
                       <button class="icon-btn ${conf ? "confirm" : ""}" data-action="discard" data-id="${esc(g.id)}" title="${conf ? "Tap again to discard" : "Discard"}" aria-label="Discard"><ha-icon icon="${conf ? "mdi:check" : "mdi:delete-outline"}"></ha-icon></button>
                     </div>
                   </div>`;
@@ -1375,7 +1552,15 @@ class MilkTrackerInventoryCard extends MilkTrackerBase {
       </div>`;
     };
 
-    return `${header}${section("fridge")}${section("freezer")}`;
+    const undatedTotal = s.undated_amount || 0;
+    const banner =
+      undatedTotal > 0
+        ? `<button class="banner" data-action="add"><ha-icon icon="mdi:calendar-question"></ha-icon>
+            <span class="spacer"><b>${withUnit(undatedTotal, u)}</b> has no pump date. Add dates bag by bag for accurate best-by dates.</span>
+            <ha-icon icon="mdi:chevron-right" style="color:var(--secondary-text-color)"></ha-icon></button>`
+        : "";
+    const sections = fridgeOn || s.fridge > 0 ? section("fridge") + section("freezer") : section("freezer");
+    return `${header}${banner}${sections}`;
   }
 
   static getConfigForm() {

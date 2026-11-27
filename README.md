@@ -29,6 +29,9 @@ dashboard cards.
 
 - **Fridge & freezer tracking.** Each pump session is stored as its own batch, and feeds use the oldest milk first.
 - **Expiry tracking.** Based on CDC guidance: 4 days in the fridge, 6 months in the freezer, and 24 h after thawing. All three are configurable. A sensor and a card banner warn you before milk expires.
+- **Freezer-only mode.** If all your milk goes straight into the freezer, turn the fridge off and the cards hide it.
+- **Date milk you already have.** Enter existing bags with the date they were pumped. The amount comes out of your undated starting stash, so the total doesn't change but you get real best-by dates.
+- **Log after the fact.** Pick an earlier time when logging a pump or feed.
 - **Freeze & thaw.** Move milk between fridge and freezer with one tap. Thawed milk gets a 24-hour use-by time.
 - **Undo anything.** Every log entry can be removed, not just the last one, and the stash is restored exactly. Each card action shows a toast with an **Undo** button.
 - **Daily stats without a midnight reset.** Today's totals, 7-day averages and a 30-day history are all calculated from the log.
@@ -105,6 +108,7 @@ Colors follow your theme. You can override them with these theme variables:
 |---|---|
 | `milk_tracker.log_pump` | `amount`, `location` (fridge/freezer), `timestamp`, `duration_minutes`, `note` |
 | `milk_tracker.log_feed` | `amount`, `source` (auto/fridge/freezer), `timestamp`, `note` |
+| `milk_tracker.add_stored` | `amount`, `pumped_at` (date or date+time), `location`, `replace_undated` (default true), `note` |
 | `milk_tracker.move` | `amount` or `batch_id`, `source`, `destination` |
 | `milk_tracker.discard` | `amount` + `source`, or `batch_id`; `note` |
 | `milk_tracker.discard_expired` | |
@@ -120,7 +124,8 @@ an actionable "Log 4 oz" notification, an expiry warning, and a physical-button 
 
 ## Options
 
-*Settings → Devices & services → Milk Tracker → Configure*: intake mode
+*Settings → Devices & services → Milk Tracker → Configure*: use the fridge
+(on/off), where new milk goes by default (freezer unless changed), intake mode
 (fixed/automatic), pump reminder interval, fridge and freezer shelf life, and
 the expiry warning window.
 

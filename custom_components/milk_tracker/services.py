@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from datetime import datetime, time
 from typing import Any
 
 import voluptuous as vol
@@ -21,12 +22,15 @@ from .const import (
     ATTR_ENTRY_ID,
     ATTR_LOCATION,
     ATTR_NOTE,
+    ATTR_PUMPED_AT,
+    ATTR_REPLACE_UNDATED,
     ATTR_SOURCE,
     ATTR_TIMESTAMP,
     DOMAIN,
     LOC_FREEZER,
     LOC_FRIDGE,
     LOCATIONS,
+    SERVICE_ADD_STORED,
     SERVICE_CONFIGURE,
     SERVICE_DELETE_ENTRY,
     SERVICE_DISCARD,
@@ -48,7 +52,7 @@ PUMP_SCHEMA = vol.Schema(
     {
         **_BASE,
         vol.Required(ATTR_AMOUNT): _AMOUNT,
-        vol.Optional(ATTR_LOCATION, default=LOC_FRIDGE): vol.In(LOCATIONS),
+        vol.Optional(ATTR_LOCATION): vol.In(LOCATIONS),
         vol.Optional(ATTR_TIMESTAMP): cv.datetime,
         vol.Optional(ATTR_NOTE): cv.string,
         vol.Optional(ATTR_DURATION): vol.All(vol.Coerce(float), vol.Range(min=0, max=600)),
@@ -89,6 +93,16 @@ SET_STASH_SCHEMA = vol.Schema(
     }
 )
 UNDO_SCHEMA = vol.Schema(_BASE)
+ADD_STORED_SCHEMA = vol.Schema(
+    {
+        **_BASE,
+        vol.Required(ATTR_AMOUNT): _AMOUNT,
+        vol.Required(ATTR_PUMPED_AT): vol.Any(cv.datetime, cv.date),
+        vol.Optional(ATTR_LOCATION): vol.In(LOCATIONS),
+        vol.Optional(ATTR_REPLACE_UNDATED, default=True): cv.boolean,
+        vol.Optional(ATTR_NOTE): cv.string,
+    }
+)
 CONFIGURE_SCHEMA = vol.Schema(
     {
         **_BASE,
@@ -168,7 +182,7 @@ def async_setup_services(hass: HomeAssistant) -> None:
         lambda call, c: c.tracker.pump(
             call.data[ATTR_AMOUNT],
             _ts(call),
-            location=call.data[ATTR_LOCATION],
+            location=call.data.get(ATTR_LOCATION) or c.default_location,
             note=call.data.get(ATTR_NOTE),
             duration=call.data.get(ATTR_DURATION),
         ),
@@ -236,6 +250,29 @@ def async_setup_services(hass: HomeAssistant) -> None:
         return None
 
     register(SERVICE_CONFIGURE, CONFIGURE_SCHEMA, _configure)
+
+    def _add_stored(call: ServiceCall, c: MilkTrackerCoordinator) -> dict[str, Any]:
+        pumped = call.data[ATTR_PUMPED_AT]
+        date_only = not isinstance(pumped, datetime)
+        if date_only:
+            # A bare date: assume noon local time so it lands on the right day.
+            pumped = datetime.combine(pumped, time(12, 0))
+        if pumped.tzinfo is None:
+            pumped = pumped.replace(tzinfo=dt_util.get_default_time_zone())
+        pumped = dt_util.as_utc(pumped)
+        if pumped > dt_util.utcnow():
+            raise MilkTrackerError("The pumped date can't be in the future")
+        return c.tracker.add_stored(
+            call.data[ATTR_AMOUNT],
+            pumped,
+            dt_util.utcnow(),
+            location=call.data.get(ATTR_LOCATION) or LOC_FREEZER,
+            replace_undated=call.data[ATTR_REPLACE_UNDATED],
+            note=call.data.get(ATTR_NOTE),
+            date_only=date_only,
+        )
+
+    register(SERVICE_ADD_STORED, ADD_STORED_SCHEMA, _add_stored)
     register(SERVICE_UNDO, UNDO_SCHEMA, lambda call, c: {**c.tracker.undo(), "undone": True})
     register(
         SERVICE_DELETE_ENTRY,
